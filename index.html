@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FormForge — Dynamic Validation SPA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0b;
+    --surface: #111114;
+    --surface2: #18181d;
+    --border: rgba(255,255,255,0.07);
+    --border-focus: rgba(255,255,255,0.2);
+    --text: #f0efe8;
+    --muted: #6b6a72;
+    --accent: #c8ff4a;
+    --accent-dim: rgba(200,255,74,0.12);
+    --accent-dark: #8fba20;
+    --danger: #ff5c5c;
+    --danger-dim: rgba(255,92,92,0.1);
+    --warn: #ffaa3b;
+    --warn-dim: rgba(255,170,59,0.1);
+    --success: #4aff9a;
+    --success-dim: rgba(74,255,154,0.1);
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius: 8px;
+    --radius-lg: 14px;
+    --transition: 0.18s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  html { background: var(--bg); color: var(--text); font-family: var(--font-mono); min-height: 100vh; }
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,10,11,0.85); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2rem; height: 56px;
+  }
+  .nav-logo {
+    font-family: var(--font-display); font-size: 1.1rem; font-weight: 800;
+    letter-spacing: -0.04em; color: var(--text); text-decoration: none;
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-links { display: flex; gap: 0.25rem; }
+  .nav-link {
+    padding: 0.35rem 0.9rem; border-radius: var(--radius);
+    font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--muted); background: none; border: none; cursor: pointer;
+    font-family: var(--font-mono); transition: color var(--transition), background var(--transition);
+    text-decoration: none;
+  }
+  .nav-link:hover { color: var(--text); background: var(--surface2); }
+  .nav-link.active { color: var(--accent); background: var(--accent-dim); }
+
+  /* PAGES */
+  .page { display: none; animation: fadeUp 0.3s ease both; }
+  .page.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* LAYOUT */
+  .container { max-width: 520px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+  .wide-container { max-width: 820px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+  /* HEADINGS */
+  h1 {
+    font-family: var(--font-display); font-size: clamp(2.2rem, 5vw, 3.2rem);
+    font-weight: 800; letter-spacing: -0.04em; line-height: 1.05;
+    color: var(--text); margin-bottom: 0.75rem;
+  }
+  h1 .hl { color: var(--accent); }
+  h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; }
+  .subtitle { font-size: 0.85rem; color: var(--muted); line-height: 1.7; margin-bottom: 2.5rem; }
+
+  /* FORM */
+  .form-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 2rem;
+  }
+  .field { margin-bottom: 1.4rem; position: relative; }
+  .field label {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 0.5rem;
+  }
+  .field label .hint { text-transform: none; letter-spacing: 0; font-style: italic; }
+
+  .input-wrap { position: relative; }
+  .input-wrap input, .input-wrap select, .input-wrap textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0.72rem 1rem;
+    font-family: var(--font-mono); font-size: 0.88rem; color: var(--text);
+    outline: none; transition: border-color var(--transition), box-shadow var(--transition);
+    appearance: none;
+  }
+  .input-wrap input:focus, .input-wrap select:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+  }
+  .input-wrap .icon {
+    position: absolute; right: 0.9rem; top: 50%; transform: translateY(-50%);
+    font-size: 0.9rem; pointer-events: none; transition: color var(--transition);
+    color: var(--muted);
+  }
+  .input-wrap .toggle-pw {
+    position: absolute; right: 0.9rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.04em;
+    text-transform: uppercase; transition: color var(--transition); padding: 0;
+  }
+  .input-wrap .toggle-pw:hover { color: var(--text); }
+  .input-wrap input[type="password"] { padding-right: 3.5rem; }
+
+  /* States */
+  .field.valid .input-wrap input { border-color: rgba(74,255,154,0.35); }
+  .field.invalid .input-wrap input { border-color: rgba(255,92,92,0.4); }
+  .field-msg {
+    font-size: 0.73rem; margin-top: 0.4rem; min-height: 1rem;
+    transition: all var(--transition); color: var(--muted);
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .field.valid .field-msg { color: var(--success); }
+  .field.invalid .field-msg { color: var(--danger); }
+  .field-msg::before {
+    content: ''; display: inline-block; width: 5px; height: 5px;
+    border-radius: 50%; background: currentColor; flex-shrink: 0;
+  }
+
+  /* PASSWORD STRENGTH */
+  .pw-strength { margin-top: 0.55rem; }
+  .pw-bars { display: flex; gap: 4px; margin-bottom: 0.35rem; }
+  .pw-bar {
+    flex: 1; height: 3px; border-radius: 2px; background: var(--border);
+    transition: background 0.25s ease;
+  }
+  .pw-bar.weak   { background: var(--danger); }
+  .pw-bar.fair   { background: var(--warn); }
+  .pw-bar.strong { background: var(--accent); }
+  .pw-bar.great  { background: var(--success); }
+  .pw-label {
+    font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+    transition: color var(--transition);
+  }
+  .pw-label.weak   { color: var(--danger); }
+  .pw-label.fair   { color: var(--warn); }
+  .pw-label.strong { color: var(--accent); }
+  .pw-label.great  { color: var(--success); }
+
+  /* USERNAME CHECK */
+  .username-status {
+    font-size: 0.73rem; margin-top: 0.4rem;
+    display: flex; align-items: center; gap: 0.4rem; color: var(--muted);
+  }
+  .username-status .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
+    animation: pulse 1.2s ease infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .username-status.available { color: var(--success); }
+  .username-status.available .dot { background: var(--success); animation: none; }
+  .username-status.taken { color: var(--danger); }
+  .username-status.taken .dot { background: var(--danger); animation: none; }
+
+  /* CHAR COUNTER */
+  .char-count { font-size: 0.7rem; color: var(--muted); }
+  .char-count.near { color: var(--warn); }
+  .char-count.over { color: var(--danger); }
+
+  /* REQUIREMENTS LIST */
+  .req-list { list-style: none; margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
+  .req-item {
+    font-size: 0.73rem; display: flex; align-items: center; gap: 0.5rem;
+    color: var(--muted); transition: color var(--transition);
+  }
+  .req-item .req-dot {
+    width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--muted);
+    flex-shrink: 0; transition: all var(--transition);
+  }
+  .req-item.met { color: var(--success); }
+  .req-item.met .req-dot { background: var(--success); border-color: var(--success); }
+
+  /* CHECKBOX */
+  .checkbox-field { display: flex; align-items: flex-start; gap: 0.75rem; }
+  .checkbox-field input[type="checkbox"] {
+    width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent);
+    cursor: pointer; flex-shrink: 0;
+  }
+  .checkbox-field label { font-size: 0.8rem; color: var(--muted); line-height: 1.5; text-transform: none; letter-spacing: 0; }
+  .checkbox-field label a { color: var(--accent); text-decoration: none; }
+
+  /* SELECT */
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: '▾'; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+    color: var(--muted); pointer-events: none; font-size: 0.85rem;
+  }
+  .select-wrap select { padding-right: 2.5rem; cursor: pointer; }
+  .select-wrap select option { background: var(--surface2); }
+
+  /* BUTTON */
+  .btn {
+    width: 100%; padding: 0.85rem 1.5rem;
+    font-family: var(--font-display); font-size: 0.95rem; font-weight: 700;
+    letter-spacing: -0.01em; cursor: pointer; border-radius: var(--radius);
+    transition: all var(--transition); border: none;
+  }
+  .btn-primary {
+    background: var(--accent); color: #0a0a0b;
+  }
+  .btn-primary:hover { background: #d4ff5c; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; transform: none; }
+  .btn-ghost {
+    background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--border-focus); }
+
+  .form-footer { text-align: center; margin-top: 1.25rem; font-size: 0.8rem; color: var(--muted); }
+  .form-footer a { color: var(--accent); text-decoration: none; cursor: pointer; }
+  .form-footer a:hover { text-decoration: underline; }
+
+  /* DIVIDER */
+  .divider { display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .divider span { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0.75rem 1.25rem;
+    font-size: 0.82rem; color: var(--text); z-index: 999;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    pointer-events: none; display: flex; align-items: center; gap: 0.6rem;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast .t-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  #toast.error .t-dot { background: var(--danger); }
+  #toast.success .t-dot { background: var(--success); }
+
+  /* DASHBOARD */
+  .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.25rem 1.5rem;
+  }
+  .stat-label { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+  .stat-value { font-family: var(--font-display); font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; }
+  .stat-value.green { color: var(--success); }
+  .stat-value.amber { color: var(--warn); }
+  .stat-value.accent { color: var(--accent); }
+
+  .timeline { border-left: 1px solid var(--border); padding-left: 1.5rem; margin-left: 0.5rem; }
+  .tl-item { position: relative; margin-bottom: 1.5rem; }
+  .tl-item::before {
+    content: ''; position: absolute; left: -1.93rem; top: 5px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--bg);
+  }
+  .tl-time { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.2rem; }
+  .tl-title { font-size: 0.88rem; color: var(--text); }
+  .tl-desc { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; }
+
+  .section-title {
+    font-family: var(--font-display); font-size: 0.8rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  /* HOME PAGE */
+  .hero { padding: 5rem 0 3rem; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: var(--accent-dim); border: 1px solid rgba(200,255,74,0.2);
+    border-radius: 100px; padding: 0.3rem 0.8rem;
+    font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 1.5rem;
+  }
+  .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pulse 1.5s ease infinite; }
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 3rem; }
+  .feature-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem;
+    transition: border-color var(--transition), transform var(--transition);
+  }
+  .feature-card:hover { border-color: rgba(200,255,74,0.25); transform: translateY(-2px); }
+  .feature-icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
+  .feature-title { font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+  .feature-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.65; }
+
+  .progress-bar-wrap { background: var(--surface2); border-radius: 100px; height: 5px; overflow: hidden; margin-top: 0.4rem; }
+  .progress-bar { height: 100%; border-radius: 100px; background: var(--accent); transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+
+  /* LOADING SPINNER */
+  .spinner {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    animation: spin 0.7s linear infinite; display: inline-block; vertical-align: -3px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PROFILE AVATAR */
+  .avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--accent-dim); border: 2px solid rgba(200,255,74,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; color: var(--accent);
+    margin-right: 1rem; flex-shrink: 0;
+  }
+  .profile-row { display: flex; align-items: center; margin-bottom: 2rem; }
+  .profile-name { font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; }
+  .profile-meta { font-size: 0.8rem; color: var(--muted); margin-top: 0.15rem; }
+
+  .code-tag {
+    display: inline-block; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0 0.4rem; font-size: 0.75rem; color: var(--accent);
+    font-family: var(--font-mono);
+  }
+
+  @media (max-width: 540px) {
+    nav { padding: 0 1rem; }
+    .container, .wide-container { padding: 2rem 1rem 4rem; }
+    .form-card { padding: 1.5rem 1.25rem; }
+    h1 { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="#/"><span>Form</span>Forge</a>
+  <div class="nav-links">
+    <button class="nav-link" data-route="/">Home</button>
+    <button class="nav-link" data-route="/register">Register</button>
+    <button class="nav-link" data-route="/login">Login</button>
+    <button class="nav-link" data-route="/dashboard" id="dash-link" style="display:none">Dashboard</button>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div id="toast"><div class="t-dot"></div><span id="toast-msg">Message</span></div>
+
+<!-- HOME PAGE -->
+<div class="page" id="page-home">
+  <div class="wide-container">
+    <div class="hero">
+      <div class="badge"><div class="badge-dot"></div>Live Demo</div>
+      <h1>Complex <span class="hl">Form<br>Validation</span> &<br>Dynamic DOM</h1>
+      <p class="subtitle">A complete single-page app demonstrating password strength analysis, real-time async validation, client-side routing, and dynamic DOM manipulation — all in vanilla JS.</p>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <button class="btn btn-primary" style="width:auto;padding:0.75rem 1.75rem;" onclick="navigate('/register')">Get Started →</button>
+        <button class="btn btn-ghost" style="width:auto;padding:0.75rem 1.75rem;" onclick="navigate('/login')">Login</button>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🔐</div>
+        <div class="feature-title">Password Strength</div>
+        <div class="feature-desc">Entropy-based analysis with visual bars, requirement checklist, and real-time feedback as you type.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-title">Async Validation</div>
+        <div class="feature-desc">Debounced username availability checks simulate a server round-trip with live loading state.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🗺️</div>
+        <div class="feature-title">Client-Side Routing</div>
+        <div class="feature-desc">Hash-based router with history management, animated page transitions, and deep-link support.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🧩</div>
+        <div class="feature-title">Dynamic DOM</div>
+        <div class="feature-desc">Live character counters, progressive field reveal, and dashboard updates driven by form data.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTER PAGE -->
+<div class="page" id="page-register">
+  <div class="container">
+    <h2 style="margin-bottom:0.4rem;">Create account</h2>
+    <p class="subtitle">All fields validate in real-time. Watch the DOM respond to every keystroke.</p>
+
+    <div class="form-card">
+
+      <!-- Name -->
+      <div class="field" id="field-name">
+        <label for="inp-name">Full Name</label>
+        <div class="input-wrap">
+          <input type="text" id="inp-name" placeholder="Ada Lovelace" autocomplete="name" />
+        </div>
+        <div class="field-msg" id="msg-name">Enter your full name</div>
+      </div>
+
+      <!-- Username -->
+      <div class="field" id="field-username">
+        <label for="inp-username">
+          Username
+          <span class="hint" id="username-char-count">0 / 20</span>
+        </label>
+        <div class="input-wrap">
+          <input type="text" id="inp-username" placeholder="ada_codes" maxlength="20" autocomplete="username" />
+        </div>
+        <div class="username-status" id="username-status">
+          <div class="dot"></div><span>Type to check availability</span>
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="field" id="field-email">
+        <label for="inp-email">Email Address</label>
+        <div class="input-wrap">
+          <input type="email" id="inp-email" placeholder="ada@difference-engine.io" autocomplete="email" />
+        </div>
+        <div class="field-msg" id="msg-email">Enter a valid email address</div>
+      </div>
+
+      <!-- Role -->
+      <div class="field" id="field-role">
+        <label for="inp-role">Role</label>
+        <div class="input-wrap select-wrap">
+          <select id="inp-role">
+            <option value="">— Select your role —</option>
+            <option value="developer">Developer</option>
+            <option value="designer">Designer</option>
+            <option value="product">Product Manager</option>
+            <option value="data">Data Scientist</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field-msg" id="msg-role">Please select your role</div>
+      </div>
+
+      <!-- Password -->
+      <div class="field" id="field-password">
+        <label for="inp-password">Password</label>
+        <div class="input-wrap">
+          <input type="password" id="inp-password" placeholder="••••••••••••" autocomplete="new-password" />
+          <button class="toggle-pw" id="toggle-pw" type="button" aria-label="Toggle password visibility">show</button>
+        </div>
+        <div class="pw-strength" id="pw-strength" style="display:none;">
+          <div class="pw-bars">
+            <div class="pw-bar" id="bar1"></div>
+            <div class="pw-bar" id="bar2"></div>
+            <div class="pw-bar" id="bar3"></div>
+            <div class="pw-bar" id="bar4"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="pw-label" id="pw-label">—</span>
+            <span id="pw-entropy" style="font-size:0.68rem;color:var(--muted);"></span>
+          </div>
+        </div>
+        <ul class="req-list" id="pw-reqs" style="display:none;">
+          <li class="req-item" id="req-len"><div class="req-dot"></div>At least 8 characters</li>
+          <li class="req-item" id="req-upper"><div class="req-dot"></div>One uppercase letter (A–Z)</li>
+          <li class="req-item" id="req-lower"><div class="req-dot"></div>One lowercase letter (a–z)</li>
+          <li class="req-item" id="req-num"><div class="req-dot"></div>One number (0–9)</li>
+          <li class="req-item" id="req-sym"><div class="req-dot"></div>One symbol (!@#$%^&*)</li>
+        </ul>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="field" id="field-confirm" style="display:none;">
+        <label for="inp-confirm">Confirm Password</label>
+        <div class="input-wrap">
+          <input type="password" id="inp-confirm" placeholder="••••••••••••" autocomplete="new-password" />
+        </div>
+        <div class="field-msg" id="msg-confirm">Passwords must match</div>
+      </div>
+
+      <div class="divider"><span>Optional</span></div>
+
+      <!-- Bio -->
+      <div class="field" id="field-bio">
+        <label for="inp-bio">
+          Short Bio
+          <span class="hint char-count" id="bio-count">0 / 160</span>
+        </label>
+        <div class="input-wrap">
+          <textarea id="inp-bio" placeholder="Tell us a bit about yourself…" rows="3" maxlength="180" style="resize:vertical;"></textarea>
+        </div>
+        <div class="field-msg" id="msg-bio" style="min-height:0;"></div>
+      </div>
+
+      <!-- Terms -->
+      <div class="field">
+        <div class="checkbox-field">
+          <input type="checkbox" id="inp-terms" />
+          <label for="inp-terms">I agree to the <a href="#" onclick="return false;">Terms of Service</a> and <a href="#" onclick="return false;">Privacy Policy</a></label>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div style="margin-bottom:1.25rem;">
+        <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted);margin-bottom:0.3rem;">
+          <span>Form completion</span><span id="progress-pct">0%</span>
+        </div>
+        <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-register" disabled onclick="handleRegister()">Create Account</button>
+
+      <p class="form-footer">Already have an account? <a onclick="navigate('/login')">Sign in</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div class="page" id="page-login">
+  <div class="container">
+    <h2 style="margin-bottom:0.4rem;">Welcome back</h2>
+    <p class="subtitle">Sign in with your credentials. Leave fields empty to test validation.</p>
+
+    <div class="form-card">
+      <div class="field" id="lfield-email">
+        <label for="linp-email">Email or Username</label>
+        <div class="input-wrap">
+          <input type="text" id="linp-email" placeholder="ada@difference-engine.io" />
+        </div>
+        <div class="field-msg" id="lmsg-email">Required</div>
+      </div>
+
+      <div class="field" id="lfield-password">
+        <label for="linp-password">Password</label>
+        <div class="input-wrap">
+          <input type="password" id="linp-password" placeholder="••••••••••••" />
+          <button class="toggle-pw" id="ltoggle-pw" type="button" aria-label="Toggle password">show</button>
+        </div>
+        <div class="field-msg" id="lmsg-password">Required</div>
+      </div>
+
+      <div class="checkbox-field" style="margin-bottom:1.4rem;">
+        <input type="checkbox" id="linp-remember" />
+        <label for="linp-remember">Remember me for 30 days</label>
+      </div>
+
+      <button class="btn btn-primary" id="btn-login" onclick="handleLogin()" style="margin-bottom:0.75rem;">Sign In</button>
+      <button class="btn btn-ghost" onclick="navigate('/register')">Create new account</button>
+
+      <p class="form-footer" style="margin-top:1rem;"><a onclick="showToast('Password reset link sent! (demo)', 'success')">Forgot password?</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div class="page" id="page-dashboard">
+  <div class="wide-container">
+    <div class="profile-row">
+      <div class="avatar" id="dash-avatar">?</div>
+      <div>
+        <div class="profile-name" id="dash-name">Guest</div>
+        <div class="profile-meta" id="dash-meta">Role unknown · <span id="dash-join">Joined just now</span></div>
+      </div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="stat-card">
+        <div class="stat-label">Profile Score</div>
+        <div class="stat-value accent" id="dash-score">0</div>
+        <div class="progress-bar-wrap" style="margin-top:0.6rem;"><div class="progress-bar" id="dash-score-bar" style="width:0%"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Password Strength</div>
+        <div class="stat-value" id="dash-pw-strength" style="font-size:1.3rem;padding-top:0.4rem;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Account Role</div>
+        <div class="stat-value" id="dash-role" style="font-size:1.3rem;padding-top:0.4rem;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Bio Length</div>
+        <div class="stat-value green" id="dash-bio-len">0</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;" class="two-col">
+      <div>
+        <div class="section-title">Activity Log</div>
+        <div class="timeline" id="dash-timeline"></div>
+      </div>
+      <div>
+        <div class="section-title">Profile Data</div>
+        <div class="form-card" id="dash-profile-data" style="font-size:0.82rem;"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-ghost" style="max-width:180px;" onclick="handleLogout()">← Sign Out</button>
+  </div>
+</div>
+
+<style>
+  @media (max-width: 640px) { .two-col { grid-template-columns: 1fr !important; } }
+</style>
+
+<script>
+// ─── ROUTER ─────────────────────────────────────────────────────────────────
+
+const routes = {
+  '/':          'home',
+  '/register':  'register',
+  '/login':     'login',
+  '/dashboard': 'dashboard',
+};
+
+let currentRoute = '/';
+
+function navigate(path) {
+  history.pushState({}, '', '#' + path);
+  renderRoute(path);
+}
+
+function renderRoute(path) {
+  if (path === '/dashboard' && !appState.loggedIn) {
+    path = '/login';
+    history.replaceState({}, '', '#/login');
+  }
+
+  currentRoute = path;
+  const pageName = routes[path] || 'home';
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => {
+    l.classList.toggle('active', l.dataset.route === path);
+  });
+
+  const page = document.getElementById('page-' + pageName);
+  if (page) { page.classList.add('active'); page.style.animation = 'none'; page.offsetHeight; page.style.animation = ''; }
+
+  if (path === '/dashboard') renderDashboard();
+}
+
+window.addEventListener('popstate', () => {
+  const hash = location.hash.slice(1) || '/';
+  renderRoute(hash);
+});
+
+// ─── APP STATE ───────────────────────────────────────────────────────────────
+
+const appState = {
+  loggedIn: false,
+  user: null,
+  pwScore: 0,
+};
+
+const TAKEN_USERNAMES = ['admin', 'root', 'user', 'test', 'demo', 'hello', 'world'];
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  const m = document.getElementById('toast-msg');
+  clearTimeout(toastTimer);
+  t.className = type ? type : '';
+  m.textContent = msg;
+  t.classList.add('show');
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ─── FIELD HELPER ────────────────────────────────────────────────────────────
+
+function setFieldState(fieldId, msgId, state, message) {
+  const field = document.getElementById(fieldId);
+  const msg = document.getElementById(msgId);
+  if (!field) return;
+  field.classList.remove('valid', 'invalid');
+  if (state === 'valid') field.classList.add('valid');
+  if (state === 'invalid') field.classList.add('invalid');
+  if (msg && message !== undefined) msg.textContent = message;
+}
+
+// ─── REGISTER VALIDATION ─────────────────────────────────────────────────────
+
+// NAME
+document.getElementById('inp-name').addEventListener('input', function () {
+  const v = this.value.trim();
+  if (v.length === 0) {
+    setFieldState('field-name', 'msg-name', '', 'Enter your full name');
+  } else if (v.length < 2) {
+    setFieldState('field-name', 'msg-name', 'invalid', 'Name must be at least 2 characters');
+  } else if (!/^[a-zA-Z\s'\-\.]+$/.test(v)) {
+    setFieldState('field-name', 'msg-name', 'invalid', 'Only letters, spaces, hyphens, apostrophes allowed');
+  } else if (v.split(' ').filter(Boolean).length < 2) {
+    setFieldState('field-name', 'msg-name', 'invalid', 'Please enter first and last name');
+  } else {
+    setFieldState('field-name', 'msg-name', 'valid', 'Looks great!');
+  }
+  updateProgress();
+});
+
+// USERNAME with debounce + async simulation
+let usernameTimer;
+document.getElementById('inp-username').addEventListener('input', function () {
+  const v = this.value.trim();
+  const counter = document.getElementById('username-char-count');
+  const status = document.getElementById('username-status');
+
+  counter.textContent = v.length + ' / 20';
+  counter.className = 'hint ' + (v.length > 18 ? 'over' : v.length > 15 ? 'near' : '');
+
+  clearTimeout(usernameTimer);
+
+  if (v.length === 0) {
+    status.className = 'username-status';
+    status.innerHTML = '<div class="dot"></div><span>Type to check availability</span>';
+    setFieldState('field-username', null, '');
+    updateProgress(); return;
+  }
+  if (v.length < 3) {
+    setFieldState('field-username', null, 'invalid');
+    status.className = 'username-status taken';
+    status.innerHTML = '<div class="dot"></div><span>Must be at least 3 characters</span>';
+    updateProgress(); return;
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(v)) {
+    setFieldState('field-username', null, 'invalid');
+    status.className = 'username-status taken';
+    status.innerHTML = '<div class="dot"></div><span>Only letters, numbers, underscores</span>';
+    updateProgress(); return;
+  }
+
+  // Show checking state
+  status.className = 'username-status';
+  status.innerHTML = '<span class="spinner"></span><span>Checking availability…</span>';
+
+  usernameTimer = setTimeout(() => {
+    const taken = TAKEN_USERNAMES.includes(v.toLowerCase());
+    if (taken) {
+      setFieldState('field-username', null, 'invalid');
+      status.className = 'username-status taken';
+      status.innerHTML = '<div class="dot"></div><span>"' + v + '" is already taken</span>';
+    } else {
+      setFieldState('field-username', null, 'valid');
+      status.className = 'username-status available';
+      status.innerHTML = '<div class="dot"></div><span>"' + v + '" is available!</span>';
+    }
+    updateProgress();
+  }, 700);
+
+  updateProgress();
+});
+
+// EMAIL
+document.getElementById('inp-email').addEventListener('input', function () {
+  const v = this.value.trim();
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (v.length === 0) {
+    setFieldState('field-email', 'msg-email', '', 'Enter a valid email address');
+  } else if (!emailRe.test(v)) {
+    setFieldState('field-email', 'msg-email', 'invalid', 'Not a valid email format');
+  } else if (v.includes('+') && !v.includes('@')) {
+    setFieldState('field-email', 'msg-email', 'invalid', 'Invalid characters in local part');
+  } else {
+    setFieldState('field-email', 'msg-email', 'valid', 'Email looks good!');
+  }
+  updateProgress();
+});
+
+// ROLE
+document.getElementById('inp-role').addEventListener('change', function () {
+  if (this.value === '') {
+    setFieldState('field-role', 'msg-role', 'invalid', 'Please select a role');
+  } else {
+    setFieldState('field-role', 'msg-role', 'valid', 'Role selected');
+  }
+  updateProgress();
+});
+
+// PASSWORD STRENGTH ENGINE
+function calcPasswordEntropy(pw) {
+  let pool = 0;
+  if (/[a-z]/.test(pw)) pool += 26;
+  if (/[A-Z]/.test(pw)) pool += 26;
+  if (/[0-9]/.test(pw)) pool += 10;
+  if (/[^a-zA-Z0-9]/.test(pw)) pool += 32;
+  return pool > 0 ? Math.round(pw.length * Math.log2(pool)) : 0;
+}
+
+function checkRequirement(id, met) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('met', met);
+  return met;
+}
+
+document.getElementById('inp-password').addEventListener('input', function () {
+  const pw = this.value;
+  const strengthEl = document.getElementById('pw-strength');
+  const reqEl = document.getElementById('pw-reqs');
+  const confirmField = document.getElementById('field-confirm');
+
+  if (pw.length === 0) {
+    strengthEl.style.display = 'none';
+    reqEl.style.display = 'none';
+    confirmField.style.display = 'none';
+    setFieldState('field-password', null, '');
+    appState.pwScore = 0;
+    updateProgress(); return;
+  }
+
+  strengthEl.style.display = 'block';
+  reqEl.style.display = 'flex';
+
+  const reqs = {
+    len:   pw.length >= 8,
+    upper: /[A-Z]/.test(pw),
+    lower: /[a-z]/.test(pw),
+    num:   /[0-9]/.test(pw),
+    sym:   /[^a-zA-Z0-9]/.test(pw),
+  };
+
+  checkRequirement('req-len',   reqs.len);
+  checkRequirement('req-upper', reqs.upper);
+  checkRequirement('req-lower', reqs.lower);
+  checkRequirement('req-num',   reqs.num);
+  checkRequirement('req-sym',   reqs.sym);
+
+  const metCount = Object.values(reqs).filter(Boolean).length;
+  const entropy  = calcPasswordEntropy(pw);
+
+  // Determine level 0-4
+  let level = 0;
+  if (entropy > 25) level = 1;
+  if (entropy > 45) level = 2;
+  if (entropy > 65) level = 3;
+  if (entropy > 85 && metCount === 5) level = 4;
+
+  appState.pwScore = level;
+
+  const classes = ['', 'weak', 'fair', 'strong', 'great'];
+  const labels  = ['', 'Weak', 'Fair', 'Strong', 'Excellent'];
+  const cls = classes[level];
+
+  [1,2,3,4].forEach(i => {
+    const bar = document.getElementById('bar' + i);
+    bar.className = 'pw-bar ' + (i <= level ? cls : '');
+  });
+
+  const pwLabel = document.getElementById('pw-label');
+  pwLabel.className = 'pw-label ' + cls;
+  pwLabel.textContent = labels[level] || '—';
+  document.getElementById('pw-entropy').textContent = 'entropy: ~' + entropy + ' bits';
+
+  const allMet = metCount === 5 && level >= 2;
+  setFieldState('field-password', null, allMet ? 'valid' : (pw.length > 0 ? 'invalid' : ''));
+
+  // Reveal confirm field when password is decent
+  confirmField.style.display = (pw.length >= 6) ? 'block' : 'none';
+
+  // Re-validate confirm if visible
+  const confirmVal = document.getElementById('inp-confirm').value;
+  if (confirmVal.length > 0) validateConfirm();
+
+  updateProgress();
+});
+
+// TOGGLE PASSWORD VISIBILITY
+document.getElementById('toggle-pw').addEventListener('click', function () {
+  const inp = document.getElementById('inp-password');
+  const isHidden = inp.type === 'password';
+  inp.type = isHidden ? 'text' : 'password';
+  this.textContent = isHidden ? 'hide' : 'show';
+});
+document.getElementById('ltoggle-pw').addEventListener('click', function () {
+  const inp = document.getElementById('linp-password');
+  const isHidden = inp.type === 'password';
+  inp.type = isHidden ? 'text' : 'password';
+  this.textContent = isHidden ? 'hide' : 'show';
+});
+
+// CONFIRM PASSWORD
+function validateConfirm() {
+  const pw = document.getElementById('inp-password').value;
+  const cf = document.getElementById('inp-confirm').value;
+  if (cf.length === 0) {
+    setFieldState('field-confirm', 'msg-confirm', '', 'Passwords must match');
+  } else if (pw !== cf) {
+    setFieldState('field-confirm', 'msg-confirm', 'invalid', 'Passwords do not match');
+  } else {
+    setFieldState('field-confirm', 'msg-confirm', 'valid', 'Passwords match!');
+  }
+  updateProgress();
+}
+document.getElementById('inp-confirm').addEventListener('input', validateConfirm);
+
+// BIO — character counter
+document.getElementById('inp-bio').addEventListener('input', function () {
+  const len = this.value.length;
+  const MAX = 160;
+  const counter = document.getElementById('bio-count');
+  counter.textContent = len + ' / ' + MAX;
+  counter.className = 'hint char-count' + (len > MAX ? ' over' : len > MAX * 0.9 ? ' near' : '');
+  const msg = document.getElementById('msg-bio');
+  if (len > MAX) {
+    setFieldState('field-bio', 'msg-bio', 'invalid', (len - MAX) + ' characters over limit');
+  } else if (len > 0) {
+    setFieldState('field-bio', 'msg-bio', 'valid', 'Bio saved');
+    msg.textContent = '';
+  }
+  updateProgress();
+});
+
+// TERMS
+document.getElementById('inp-terms').addEventListener('change', updateProgress);
+
+// ─── PROGRESS METER ──────────────────────────────────────────────────────────
+
+function updateProgress() {
+  const checks = [
+    document.getElementById('field-name')?.classList.contains('valid'),
+    document.getElementById('field-username')?.classList.contains('valid'),
+    document.getElementById('field-email')?.classList.contains('valid'),
+    document.getElementById('field-role')?.classList.contains('valid'),
+    document.getElementById('field-password')?.classList.contains('valid'),
+    document.getElementById('inp-confirm').value.length > 0 && document.getElementById('field-confirm')?.classList.contains('valid'),
+    document.getElementById('inp-terms').checked,
+  ];
+  const filled = checks.filter(Boolean).length;
+  const pct = Math.round((filled / checks.length) * 100);
+
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('btn-register').disabled = pct < 100;
+}
+
+// ─── REGISTER SUBMIT ─────────────────────────────────────────────────────────
+
+function handleRegister() {
+  const name     = document.getElementById('inp-name').value.trim();
+  const username = document.getElementById('inp-username').value.trim();
+  const email    = document.getElementById('inp-email').value.trim();
+  const role     = document.getElementById('inp-role').value;
+  const bio      = document.getElementById('inp-bio').value.trim();
+  const pwLabels = ['', 'Weak', 'Fair', 'Strong', 'Excellent'];
+
+  appState.user = { name, username, email, role, bio, pwScore: appState.pwScore, joinTime: new Date() };
+  appState.loggedIn = true;
+
+  document.getElementById('dash-link').style.display = 'block';
+  showToast('Account created! Welcome, ' + name.split(' ')[0] + ' 🎉', 'success');
+
+  setTimeout(() => navigate('/dashboard'), 800);
+}
+
+// ─── LOGIN SUBMIT ─────────────────────────────────────────────────────────────
+
+function handleLogin() {
+  const email = document.getElementById('linp-email').value.trim();
+  const pw    = document.getElementById('linp-password').value;
+  let valid = true;
+
+  if (email.length === 0) {
+    setFieldState('lfield-email', 'lmsg-email', 'invalid', 'Email or username is required');
+    valid = false;
+  } else {
+    setFieldState('lfield-email', 'lmsg-email', 'valid', '');
+  }
+  if (pw.length === 0) {
+    setFieldState('lfield-password', 'lmsg-password', 'invalid', 'Password is required');
+    valid = false;
+  } else if (pw.length < 6) {
+    setFieldState('lfield-password', 'lmsg-password', 'invalid', 'Password too short');
+    valid = false;
+  } else {
+    setFieldState('lfield-password', 'lmsg-password', 'valid', '');
+  }
+
+  if (!valid) { showToast('Please fix the errors above', 'error'); return; }
+
+  // Simulate login
+  const btn = document.getElementById('btn-login');
+  btn.textContent = 'Signing in…';
+  btn.disabled = true;
+
+  setTimeout(() => {
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
+
+    appState.user = {
+      name: email.includes('@') ? email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : email,
+      username: email.split('@')[0],
+      email, role: 'developer', bio: '', pwScore: 3, joinTime: new Date()
+    };
+    appState.loggedIn = true;
+    document.getElementById('dash-link').style.display = 'block';
+    showToast('Welcome back!', 'success');
+    setTimeout(() => navigate('/dashboard'), 500);
+  }, 1100);
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+
+function renderDashboard() {
+  const u = appState.user;
+  if (!u) return;
+
+  const initials = u.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('dash-avatar').textContent = initials;
+  document.getElementById('dash-name').textContent = u.name;
+  document.getElementById('dash-meta').innerHTML = (u.role || 'No role') + ' · <span id="dash-join">Joined ' + timeSince(u.joinTime) + '</span>';
+
+  const pwLabels = ['—', 'Weak 🔴', 'Fair 🟡', 'Strong 🟢', 'Excellent ⚡'];
+  const pwColors = ['var(--muted)', 'var(--danger)', 'var(--warn)', 'var(--accent)', 'var(--success)'];
+  document.getElementById('dash-pw-strength').textContent = pwLabels[u.pwScore] || '—';
+  document.getElementById('dash-pw-strength').style.color = pwColors[u.pwScore] || 'var(--muted)';
+
+  document.getElementById('dash-role').textContent = u.role ? u.role.charAt(0).toUpperCase()+u.role.slice(1) : '—';
+  document.getElementById('dash-bio-len').textContent = u.bio.length;
+
+  const score = calcProfileScore(u);
+  document.getElementById('dash-score').textContent = score;
+  document.getElementById('dash-score-bar').style.width = score + '%';
+
+  // Profile data card
+  const dataCard = document.getElementById('dash-profile-data');
+  dataCard.innerHTML = [
+    ['Username',  '<span class="code-tag">@' + (u.username||'—') + '</span>'],
+    ['Email',     u.email],
+    ['Role',      u.role || '—'],
+    ['Bio',       u.bio ? u.bio.slice(0,80) + (u.bio.length>80?'…':'') : '<em style="color:var(--muted)">none</em>'],
+    ['Password',  pwLabels[u.pwScore]],
+  ].map(([k,v]) => `
+    <div style="display:flex;justify-content:space-between;gap:1rem;padding:0.55rem 0;border-bottom:1px solid var(--border);font-size:0.8rem;">
+      <span style="color:var(--muted);flex-shrink:0;">${k}</span>
+      <span style="text-align:right;word-break:break-all;">${v}</span>
+    </div>`).join('') + '<div style="height:0.25rem;"></div>';
+
+  // Timeline
+  const tl = document.getElementById('dash-timeline');
+  const events = [
+    { time: 'Just now', title: 'Account created', desc: 'Registration completed successfully' },
+    { time: '0s ago',   title: 'Dashboard loaded', desc: 'Dynamic DOM populated from form state' },
+    { time: 'Pending',  title: 'Email verification', desc: 'Check your inbox at ' + u.email },
+    { time: 'Pending',  title: 'Profile completion', desc: 'Score: ' + score + '/100 — add a bio to improve' },
+  ];
+  tl.innerHTML = events.map(e => `
+    <div class="tl-item">
+      <div class="tl-time">${e.time}</div>
+      <div class="tl-title">${e.title}</div>
+      <div class="tl-desc">${e.desc}</div>
+    </div>`).join('');
+}
+
+function calcProfileScore(u) {
+  let s = 0;
+  if (u.name) s += 20;
+  if (u.username) s += 15;
+  if (u.email) s += 20;
+  if (u.role) s += 15;
+  if (u.bio && u.bio.length > 20) s += 15;
+  s += (u.pwScore || 0) * 3.75;
+  return Math.min(100, Math.round(s));
+}
+
+function timeSince(d) {
+  const secs = Math.floor((new Date() - d) / 1000);
+  if (secs < 10) return 'just now';
+  if (secs < 60) return secs + 's ago';
+  return Math.floor(secs/60) + 'm ago';
+}
+
+// ─── LOGOUT ──────────────────────────────────────────────────────────────────
+
+function handleLogout() {
+  appState.loggedIn = false;
+  appState.user = null;
+  document.getElementById('dash-link').style.display = 'none';
+  showToast('Signed out successfully');
+  navigate('/');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+
+(function init() {
+  const hash = location.hash.slice(1) || '/';
+  renderRoute(hash);
+})();
+</script>
+</body>
+</html>
